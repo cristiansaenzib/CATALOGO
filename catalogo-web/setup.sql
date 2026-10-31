@@ -4,7 +4,10 @@ create table refs(
   parent_id uuid references refs(id) on delete cascade,
   name text not null,
   theme text default 'marfil',
-  pos int default 0
+  pos int default 0,
+  price_detal text,
+  price_dist text,
+  price_mayor text
 );
 create table photos(
   id uuid primary key default gen_random_uuid(),

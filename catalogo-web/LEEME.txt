@@ -5,3 +5,6 @@ CATALOGO WEB - Pasos rapidos
 4. Project Settings > API: copia Project URL y la clave anon public, y pegalas en index.html (SUPABASE_URL y SUPABASE_KEY).
 5. Sube index.html a Netlify (app.netlify.com/drop), Vercel o GitHub Pages.
 6. Abre tu web (boton "Admin" arriba a la derecha), pulsa "Admin" y entra con tu usuario.
+
+PRECIOS: si ya habias corrido setup.sql antes, corre tambien migracion-precios.sql (una sola vez).
+En una sub-referencia, el admin pulsa 'Precios' para poner Detal, Distribuidor y Mayorista.

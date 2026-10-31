@@ -62,6 +62,13 @@ input[type=text],input[type=email],input[type=password]{font-size:16px}
 .pr strong{display:block;font-size:1.1rem;margin-top:2px;word-break:break-word}
 .pr.m{width:auto;padding:6px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:.9rem}
 @media (max-width:600px){.pr strong{font-size:1rem}}
+.bl{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:14px}
+.rb{position:relative;display:flex;align-items:center;justify-content:center;min-height:88px;padding:18px 54px;border-radius:var(--r);background:var(--acc);color:var(--on);border:2px solid var(--acc);font-weight:600;font-size:1.15rem;text-align:center;cursor:pointer;user-select:none;transition:transform .12s}
+.rb:active{transform:scale(.98)}
+.rb .a{position:absolute;top:50%;right:6px;transform:translateY(-50%);display:flex;gap:4px}.rb .a button{padding:5px 9px;min-width:38px;background:#000b;color:#fff}
+.sn{text-align:center;margin:-4px 0 14px;font-weight:500;opacity:.8;font-size:1.15rem}
+nav button.bk{font-size:2.1rem;line-height:1;padding:0 20px;min-width:64px;min-height:48px;background:var(--acc);color:var(--on)}
+@media (max-width:600px){.bl{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -84,7 +91,7 @@ const TH=[
 {id:"rosa",n:"Rosa",bg:"#fde6ec",fg:"#4a1f2c",acc:"#d6336c",on:"#fff",f:'Palatino,serif',r:"28px",gap:"14px"},
 {id:"mono",n:"Mono",bg:"#fff",fg:"#000",acc:"#000",on:"#fff",f:'ui-monospace,Menlo,monospace',r:"0",gap:"6px"}];
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let refs=[],photos=[],p=0,sub=null,idx=false,admin=false,list=[],li=0,busy="",pmin=false;
+let refs=[],photos=[],p=0,sub=null,idx=true,admin=false,list=[],li=0,busy="",pmin=false;
 const tops=()=>refs.filter(r=>!r.parent_id),subsOf=i=>refs.filter(r=>r.parent_id===i),phOf=i=>photos.filter(x=>x.ref_id===i);
 const url=pa=>sb.storage.from("fotos").getPublicUrl(pa).data.publicUrl;
 const covOf=r=>{const x=[r,...subsOf(r.id)].flatMap(y=>phOf(y.id))[0];return x?url(x.path):""};
@@ -93,39 +100,44 @@ async function load(){const[a,b]=await Promise.all([sb.from("refs").select("*").
  refs=a.data||[];photos=b.data||[];if(p>=tops().length)p=Math.max(0,tops().length-1);render()}
 function theme(r){const t=TH.find(x=>x.id===(r&&r.theme))||TH[0],s=document.documentElement.style;
  [["--bg",t.bg],["--fg",t.fg],["--acc",t.acc],["--on",t.on],["--f",t.f],["--r",t.r],["--gap",t.gap]].forEach(([k,v])=>s.setProperty(k,v))}
-function nav(){const T=tops();
- $("#nv").innerHTML=`<button class="g" id="ix">${idx?"← Volver":"☰ Índice"}</button><button id="pv" ${p<1||idx?"disabled":""}>‹</button><b>${idx?"Índice":T.length?`${p+1} / ${T.length}`:""}</b><button id="nx" ${p>=T.length-1||idx?"disabled":""}>›</button><button class="g" id="ad">${admin?"Salir":"Admin"}</button>`;
- $("#ix").onclick=()=>{idx=!idx;render()};$("#pv").onclick=()=>go(p-1);$("#nx").onclick=()=>go(p+1);
+function push(){history.pushState({idx,p,sub},"")}
+function back(){if(history.state&&history.length>1)history.back();else{idx=true;sub=null;render();scrollTo(0,0)}}
+addEventListener("popstate",e=>{const s=e.state||{idx:true,p:0,sub:null};idx=s.idx;p=s.p;sub=s.sub;render();scrollTo(0,0)});
+history.replaceState({idx:true,p:0,sub:null},"");
+function nav(){
+ $("#nv").innerHTML=`${idx?"":`<button class="bk" id="bk" aria-label="Atrás">←</button>`}<b></b><button class="g" id="ad">${admin?"Salir":"Admin"}</button>`;
+ if($("#bk"))$("#bk").onclick=back;
  $("#ad").onclick=()=>admin?sb.auth.signOut():login()}
 function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
  const A=$("#app");
- if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="grid" style="gap:14px">${T.map((x,i)=>`<div class="cv" data-i="${i}">${covOf(x)?`<img loading="lazy" src="${covOf(x)}" alt="">`:""}${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:""}<span>${esc(x.name)}</span></div>`).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
-  A.querySelectorAll(".cv").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else{p=+e.dataset.i;idx=false;sub=null;render();scrollTo(0,0)}});
+ if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="bl">${T.map((x,i)=>{const t=TH.find(z=>z.id===x.theme)||TH[0];return `<div class="rb" role="button" data-i="${i}" style="background:${t.bg};color:${t.fg};border-color:${t.acc};font-family:${t.f}"><span>${esc(x.name)}</span>${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:""}</div>`}).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
+  A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)}});
   if(admin&&$("#nr"))$("#nr").onclick=()=>refDlg();return}
- const S=subsOf(r.id);if(sub&&!S.find(s=>s.id===sub))sub=null;
- list=sub?phOf(sub):[...phOf(r.id),...S.flatMap(s=>phOf(s.id))];
- A.innerHTML=`<div class="logo"></div><h1 style="text-align:center">${esc(r.name)}</h1><div class="row chips"><button class="chip g ${sub?"":"on"}" data-s="">Todas</button>${S.map(s=>`<button class="chip g ${sub===s.id?"on":""}" data-s="${s.id}">${esc(s.name)}</button>`).join("")}</div>`+
- (admin?`<div class="row"><button id="up">${busy||"+ Añadir fotos"}</button><button class="g" id="ns">+ Sub-referencia</button><button class="g" id="ed">Editar</button>${sub?`<button class="g" id="ep">Precios</button><button class="d" id="ds">Eliminar sub</button>`:""}<button class="d" id="dr">Eliminar referencia</button><input id="fi" type="file" accept="image/*" multiple hidden></div>`:"")+
- (list.length?`<div class="grid">${list.map((x,i)=>`<div class="ph" data-i="${i}"><img loading="lazy" decoding="async" src="${url(x.path)}" alt="">${admin?`<div class="a t"><button data-pm="-1">◀</button><button data-pm="1">▶</button></div><div class="a bt"><button data-x="1">✕</button></div>`:`<div class="a bt"><button data-d="1">⭳</button></div>`}</div>`).join("")}</div>`:`<p class="mut">Sin fotos todavía.</p>`);
+ const S=subsOf(r.id),own=phOf(r.id);if(sub&&sub!=="_own"&&!S.find(s=>s.id===sub))sub=null;
+ const rs=sub&&sub!=="_own"?sub:null,show=!!sub||!S.length,sr0=rs&&S.find(x=>x.id===rs);
+ list=show?(rs?phOf(rs):own):[];
+ A.innerHTML=`<div class="logo"></div><h1 style="text-align:center">${esc(r.name)}</h1>`+(sr0?`<h2 class="sn">${esc(sr0.name)}</h2>`:sub==="_own"?`<h2 class="sn">General</h2>`:"")+
+ (admin?`<div class="row">${show?`<button id="up">${busy||"+ Añadir fotos"}</button>`:""}<button class="g" id="ns">+ Sub-referencia</button><button class="g" id="ed">Editar</button>${rs?`<button class="g" id="ep">Precios</button><button class="d" id="ds">Eliminar sub</button>`:""}<button class="d" id="dr">Eliminar referencia</button><input id="fi" type="file" accept="image/*" multiple hidden></div>`:"")+
+ (!show?`<div class="bl">${own.length?`<div class="rb" role="button" data-s="_own"><span>General</span></div>`:""}${S.map(s=>`<div class="rb" role="button" data-s="${s.id}"><span>${esc(s.name)}</span></div>`).join("")}</div>`:
+  list.length?`<div class="grid">${list.map((x,i)=>`<div class="ph" data-i="${i}"><img loading="lazy" decoding="async" src="${url(x.path)}" alt="">${admin?`<div class="a t"><button data-pm="-1">◀</button><button data-pm="1">▶</button></div><div class="a bt"><button data-x="1">✕</button></div>`:`<div class="a bt"><button data-d="1">⭳</button></div>`}</div>`).join("")}</div>`:`<p class="mut">Sin fotos todavía.</p>`);
  if(sub){const sr=S.find(x=>x.id===sub);if(sr&&(admin||sr.price_detal||sr.price_dist||sr.price_mayor)){A.insertAdjacentHTML("beforeend",pmin?`<div class="pr m" id="pr">$ Precios</div>`:`<div class="pr" id="pr"><div class="h"><span>Precios · ${esc(sr.name)}</span><button id="pm">Ocultar</button></div><div class="c"><div><small>Detal</small><strong>${esc(sr.price_detal||"—")}</strong></div><div><small>Distribuidor</small><strong>${esc(sr.price_dist||"—")}</strong></div><div><small>Mayorista</small><strong>${esc(sr.price_mayor||"—")}</strong></div></div></div>`);
   $("#pr").onclick=()=>{if(pmin){pmin=false;render()}};if($("#pm"))$("#pm").onclick=e=>{e.stopPropagation();pmin=true;render()}}}
- A.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{sub=b.dataset.s||null;render()});
+  A.querySelectorAll(".rb[data-s]").forEach(b=>b.onclick=()=>{sub=b.dataset.s;push();render();scrollTo(0,0)});
  A.querySelectorAll(".ph").forEach(e=>e.onclick=ev=>{const i=+e.dataset.i,x=list[i];
   if(ev.target.closest("[data-d]"))dl(x);else if(ev.target.closest("[data-x]")){if(confirm("¿Quitar foto?"))delPh([x])}
   else if(ev.target.closest("[data-pm]"))move("photos",list,i,+ev.target.closest("[data-pm]").dataset.pm);else{li=i;$("#li").src=url(x.path);$("#lb").classList.add("on")}});
- if(admin){const fi=$("#fi");$("#up").onclick=()=>fi.click();fi.onchange=()=>upload(r,[...fi.files]);
-  $("#ns").onclick=()=>nameDlg("Nueva sub-referencia",async n=>{const{data}=await sb.from("refs").insert({name:n,parent_id:r.id,pos:Date.now()%1e9}).select().single();sub=data&&data.id;load()});
+ if(admin){const fi=$("#fi");if($("#up")){$("#up").onclick=()=>fi.click();fi.onchange=()=>upload(r,[...fi.files])}
+  $("#ns").onclick=()=>nameDlg("Nueva sub-referencia",async n=>{const{data}=await sb.from("refs").insert({name:n,parent_id:r.id,pos:Date.now()%1e9}).select().single();sub=data&&data.id;push();load()});
   $("#ed").onclick=()=>refDlg(r);
-  $("#dr").onclick=async()=>{if(!confirm("¿Eliminar “"+r.name+"” y todas sus fotos?"))return;await delPh([...phOf(r.id),...S.flatMap(s=>phOf(s.id))],true);await sb.from("refs").delete().eq("id",r.id);load()};
+  $("#dr").onclick=async()=>{if(!confirm("¿Eliminar “"+r.name+"” y todas sus fotos?"))return;await delPh([...phOf(r.id),...S.flatMap(s=>phOf(s.id))],true);await sb.from("refs").delete().eq("id",r.id);idx=true;sub=null;history.replaceState({idx:true,p:0,sub:null},"");load()};
   if($("#ep"))$("#ep").onclick=()=>priceDlg(S.find(x=>x.id===sub));
   if($("#ds"))$("#ds").onclick=async()=>{if(!confirm("¿Eliminar esta sub-referencia y sus fotos?"))return;await delPh(phOf(sub),true);await sb.from("refs").delete().eq("id",sub);sub=null;load()}}}
-function go(n){p=n;sub=null;render();scrollTo(0,0)}
 async function move(tb,arr,i,d){const a=arr[i],b=arr[i+d];if(!b)return;
  await Promise.all([sb.from(tb).update({pos:b.pos}).eq("id",a.id),sb.from(tb).update({pos:a.pos}).eq("id",b.id)]);
  if(tb==="refs"&&p===i)p=i+d;load()}
 async function delPh(a,skip){await sb.storage.from("fotos").remove(a.map(x=>x.path));if(!skip){await sb.from("photos").delete().in("id",a.map(x=>x.id));load()}}
 function resize(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=720;c.height=1280;const x=c.getContext("2d"),s=Math.max(720/im.width,1280/im.height),w=im.width*s,h=im.height*s;x.fillStyle="#fff";x.fillRect(0,0,720,1280);x.drawImage(im,(720-w)/2,(1280-h)/2,w,h);URL.revokeObjectURL(u);c.toBlob(b=>b?ok(b):no(),"image/jpeg",.86)};im.onerror=no;im.src=u})}
-async function upload(r,fs){const tgt=sub||r.id;let n=0,pos=Date.now()%1e9;
+async function upload(r,fs){const tgt=(sub&&sub!=="_own")?sub:r.id;let n=0,pos=Date.now()%1e9;
  for(const f of fs){busy=`Subiendo ${++n}/${fs.length}…`;render();try{const b=await resize(f),path=`${tgt}/${Date.now()}${Math.random().toString(36).slice(2,6)}.jpg`;
   const u=await sb.storage.from("fotos").upload(path,b,{contentType:"image/jpeg"});if(u.error)throw u.error;
   await sb.from("photos").insert({ref_id:tgt,path,pos:pos+n})}catch(e){alert("Falló una foto: "+(e.message||e))}}
@@ -137,11 +149,9 @@ async function dl(x){const name=(tops()[p].name||"foto").replace(/[^\w-]+/g,"-")
  catch(e){if(e&&e.name==="AbortError")return;window.open(url(x.path),"_blank")}}
 $("#lp").onclick=()=>sh(-1);$("#ln").onclick=()=>sh(1);$("#ld").onclick=()=>dl(list[li]);$("#lc").onclick=()=>$("#lb").classList.remove("on");
 const sh=d=>{li=(li+d+list.length)%list.length;$("#li").src=url(list[li].path)};
-document.addEventListener("keydown",e=>{if($("#lb").classList.contains("on")){if(e.key==="ArrowLeft")sh(-1);if(e.key==="ArrowRight")sh(1);if(e.key==="Escape")$("#lc").click();return}
- if(idx||document.querySelector("dialog[open]"))return;if(e.key==="ArrowLeft"&&p>0)go(p-1);if(e.key==="ArrowRight"&&p<tops().length-1)go(p+1)});
+document.addEventListener("keydown",e=>{if($("#lb").classList.contains("on")){if(e.key==="ArrowLeft")sh(-1);if(e.key==="ArrowRight")sh(1);if(e.key==="Escape")$("#lc").click()}});
 let sx=0,sy=0;document.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
-document.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*2)return;
- if($("#lb").classList.contains("on"))sh(dx<0?1:-1);else if(!idx&&!document.querySelector("dialog[open]")){const n=p+(dx<0?1:-1);if(n>=0&&n<tops().length)go(n)}});
+document.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*2)return;if($("#lb").classList.contains("on"))sh(dx<0?1:-1)});
 function nameDlg(t,cb,v=""){const d=$("#dg");d.innerHTML=`<h3>${t}</h3><input type="text" id="nm" value="${esc(v)}" placeholder="Nombre"><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;d.showModal();$("#c").onclick=()=>d.close();$("#o").onclick=()=>{const v=$("#nm").value.trim();if(v){d.close();cb(v)}}}
 function refDlg(r){let th=r?r.theme:"marfil";const d=$("#dg");
  d.innerHTML=`<h3>${r?"Editar":"Nueva referencia"}</h3><input type="text" id="nm" value="${r?esc(r.name):""}" placeholder="Nombre"><div class="th">${TH.map(t=>`<button data-t="${t.id}" class="${t.id===th?"on":""}" style="background:${t.bg};color:${t.fg};font-family:${t.f}">${t.n}</button>`).join("")}</div><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;
@@ -149,7 +159,7 @@ function refDlg(r){let th=r?r.theme:"marfil";const d=$("#dg");
  $("#c").onclick=()=>d.close();
  $("#o").onclick=async()=>{const n=$("#nm").value.trim();if(!n)return;d.close();
   if(r)await sb.from("refs").update({name:n,theme:th}).eq("id",r.id);
-  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9}).select().single();await load();p=tops().findIndex(x=>x.id===data.id);idx=false}
+  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9}).select().single();await load();p=tops().findIndex(x=>x.id===data.id);idx=false;push()}
   load()}}
 function priceDlg(r){const d=$("#dg");d.innerHTML=`<h3>Precios · ${esc(r.name)}</h3><label>Detal</label><input type="text" id="p1" value="${esc(r.price_detal||"")}" placeholder="Ej. $25.000"><label>Distribuidor</label><input type="text" id="p2" value="${esc(r.price_dist||"")}" placeholder="Ej. $20.000"><label>Mayorista</label><input type="text" id="p3" value="${esc(r.price_mayor||"")}" placeholder="Ej. $17.000"><p></p><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;d.showModal();$("#c").onclick=()=>d.close();
  $("#o").onclick=async()=>{const{error}=await sb.from("refs").update({price_detal:$("#p1").value.trim(),price_dist:$("#p2").value.trim(),price_mayor:$("#p3").value.trim()}).eq("id",r.id);if(error)alert("No se pudo guardar. ¿Corriste migracion-precios.sql?");d.close();load()}}

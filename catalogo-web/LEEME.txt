@@ -1,0 +1,7 @@
+CATALOGO WEB - Pasos rapidos
+1. Crea un proyecto en supabase.com (gratis).
+2. SQL Editor: pega todo setup.sql y pulsa Run.
+3. Authentication > Users: crea tu usuario admin (correo y contrasena). Desactiva los registros publicos.
+4. Project Settings > API: copia Project URL y la clave anon public, y pegalas en index.html (SUPABASE_URL y SUPABASE_KEY).
+5. Sube index.html a Netlify (app.netlify.com/drop), Vercel o GitHub Pages.
+6. Abre tu web (boton "Admin" arriba a la derecha), pulsa "Admin" y entra con tu usuario.

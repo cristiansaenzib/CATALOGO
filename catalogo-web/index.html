@@ -63,8 +63,8 @@ input[type=text],input[type=email],input[type=password]{font-size:16px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ====== 1) PEGA AQUÍ TUS DATOS DE SUPABASE (Project Settings > API) ====== */
-const SUPABASE_URL="https://TU-PROYECTO.supabase.co";
-const SUPABASE_KEY="TU-ANON-PUBLIC-KEY";
+const SUPABASE_URL="https://qllcocsfnhtxpddbgldx.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsbGNvY3Nmbmh0eHBkZGJnbGR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NTM3NjgsImV4cCI6MjEwOTAyOTc2OH0.i88eMoxoe-HYYlSSr_DiqSWoaYbaLT46-1HMLQ4AEv8";
 /* ======================================================================== */
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const TH=[
@@ -76,19 +76,19 @@ const TH=[
 {id:"mono",n:"Mono",bg:"#fff",fg:"#000",acc:"#000",on:"#fff",f:'ui-monospace,Menlo,monospace',r:"0",gap:"6px"}];
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let refs=[],photos=[],p=0,sub=null,idx=false,admin=false,list=[],li=0,busy="";
-const top=()=>refs.filter(r=>!r.parent_id),subsOf=i=>refs.filter(r=>r.parent_id===i),phOf=i=>photos.filter(x=>x.ref_id===i);
+const tops=()=>refs.filter(r=>!r.parent_id),subsOf=i=>refs.filter(r=>r.parent_id===i),phOf=i=>photos.filter(x=>x.ref_id===i);
 const url=pa=>sb.storage.from("fotos").getPublicUrl(pa).data.publicUrl;
 const covOf=r=>{const x=[r,...subsOf(r.id)].flatMap(y=>phOf(y.id))[0];return x?url(x.path):""};
 async function load(){const[a,b]=await Promise.all([sb.from("refs").select("*").order("pos"),sb.from("photos").select("*").order("pos")]);
  if(a.error){nav();$("#app").innerHTML='<div class="logo"></div><p class="mut">No se pudo conectar. Revisa SUPABASE_URL y SUPABASE_KEY.</p>';return}
- refs=a.data||[];photos=b.data||[];if(p>=top().length)p=Math.max(0,top().length-1);render()}
+ refs=a.data||[];photos=b.data||[];if(p>=tops().length)p=Math.max(0,tops().length-1);render()}
 function theme(r){const t=TH.find(x=>x.id===(r&&r.theme))||TH[0],s=document.documentElement.style;
  [["--bg",t.bg],["--fg",t.fg],["--acc",t.acc],["--on",t.on],["--f",t.f],["--r",t.r],["--gap",t.gap]].forEach(([k,v])=>s.setProperty(k,v))}
-function nav(){const T=top();
+function nav(){const T=tops();
  $("#nv").innerHTML=`<button class="g" id="ix">${idx?"← Volver":"☰ Índice"}</button><button id="pv" ${p<1||idx?"disabled":""}>‹</button><b>${idx?"Índice":T.length?`${p+1} / ${T.length}`:""}</b><button id="nx" ${p>=T.length-1||idx?"disabled":""}>›</button><button class="g" id="ad">${admin?"Salir":"Admin"}</button>`;
  $("#ix").onclick=()=>{idx=!idx;render()};$("#pv").onclick=()=>go(p-1);$("#nx").onclick=()=>go(p+1);
  $("#ad").onclick=()=>admin?sb.auth.signOut():login()}
-function render(){const T=top(),r=T[p];theme(idx?null:r);nav();
+function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
  const A=$("#app");
  if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="grid" style="gap:14px">${T.map((x,i)=>`<div class="cv" data-i="${i}">${covOf(x)?`<img loading="lazy" src="${covOf(x)}" alt="">`:""}${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:""}<span>${esc(x.name)}</span></div>`).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
   A.querySelectorAll(".cv").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else{p=+e.dataset.i;idx=false;sub=null;render();scrollTo(0,0)}});
@@ -118,7 +118,7 @@ async function upload(r,fs){const tgt=sub||r.id;let n=0,pos=Date.now()%1e9;
   const u=await sb.storage.from("fotos").upload(path,b,{contentType:"image/jpeg"});if(u.error)throw u.error;
   await sb.from("photos").insert({ref_id:tgt,path,pos:pos+n})}catch(e){alert("Falló una foto: "+(e.message||e))}}
  busy="";load()}
-async function dl(x){const name=(top()[p].name||"foto").replace(/[^\w-]+/g,"-")+"-"+x.id.slice(0,6)+".jpg";
+async function dl(x){const name=(tops()[p].name||"foto").replace(/[^\w-]+/g,"-")+"-"+x.id.slice(0,6)+".jpg";
  try{const b=await(await fetch(url(x.path))).blob(),f=new File([b],name,{type:"image/jpeg"});
   if(navigator.canShare&&navigator.canShare({files:[f]})&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){await navigator.share({files:[f]});return}
   const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
@@ -126,10 +126,10 @@ async function dl(x){const name=(top()[p].name||"foto").replace(/[^\w-]+/g,"-")+
 $("#lp").onclick=()=>sh(-1);$("#ln").onclick=()=>sh(1);$("#ld").onclick=()=>dl(list[li]);$("#lc").onclick=()=>$("#lb").classList.remove("on");
 const sh=d=>{li=(li+d+list.length)%list.length;$("#li").src=url(list[li].path)};
 document.addEventListener("keydown",e=>{if($("#lb").classList.contains("on")){if(e.key==="ArrowLeft")sh(-1);if(e.key==="ArrowRight")sh(1);if(e.key==="Escape")$("#lc").click();return}
- if(idx||document.querySelector("dialog[open]"))return;if(e.key==="ArrowLeft"&&p>0)go(p-1);if(e.key==="ArrowRight"&&p<top().length-1)go(p+1)});
+ if(idx||document.querySelector("dialog[open]"))return;if(e.key==="ArrowLeft"&&p>0)go(p-1);if(e.key==="ArrowRight"&&p<tops().length-1)go(p+1)});
 let sx=0,sy=0;document.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
 document.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*2)return;
- if($("#lb").classList.contains("on"))sh(dx<0?1:-1);else if(!idx&&!document.querySelector("dialog[open]")){const n=p+(dx<0?1:-1);if(n>=0&&n<top().length)go(n)}});
+ if($("#lb").classList.contains("on"))sh(dx<0?1:-1);else if(!idx&&!document.querySelector("dialog[open]")){const n=p+(dx<0?1:-1);if(n>=0&&n<tops().length)go(n)}});
 function nameDlg(t,cb,v=""){const d=$("#dg");d.innerHTML=`<h3>${t}</h3><input type="text" id="nm" value="${esc(v)}" placeholder="Nombre"><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;d.showModal();$("#c").onclick=()=>d.close();$("#o").onclick=()=>{const v=$("#nm").value.trim();if(v){d.close();cb(v)}}}
 function refDlg(r){let th=r?r.theme:"marfil";const d=$("#dg");
  d.innerHTML=`<h3>${r?"Editar":"Nueva referencia"}</h3><input type="text" id="nm" value="${r?esc(r.name):""}" placeholder="Nombre"><div class="th">${TH.map(t=>`<button data-t="${t.id}" class="${t.id===th?"on":""}" style="background:${t.bg};color:${t.fg};font-family:${t.f}">${t.n}</button>`).join("")}</div><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;
@@ -137,7 +137,7 @@ function refDlg(r){let th=r?r.theme:"marfil";const d=$("#dg");
  $("#c").onclick=()=>d.close();
  $("#o").onclick=async()=>{const n=$("#nm").value.trim();if(!n)return;d.close();
   if(r)await sb.from("refs").update({name:n,theme:th}).eq("id",r.id);
-  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9}).select().single();await load();p=top().findIndex(x=>x.id===data.id);idx=false}
+  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9}).select().single();await load();p=tops().findIndex(x=>x.id===data.id);idx=false}
   load()}}
 function login(){const d=$("#dg");d.innerHTML=`<h3>Acceso admin</h3><input type="email" id="em" placeholder="Correo"><input type="password" id="pw" placeholder="Contraseña"><p id="er" style="color:#d33"></p><button class="g" id="c">Cancelar</button> <button id="o">Entrar</button>`;d.showModal();
  $("#c").onclick=()=>d.close();$("#o").onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$("#em").value,password:$("#pw").value});if(error)$("#er").textContent="Datos incorrectos";else d.close()}}

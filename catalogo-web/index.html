@@ -63,9 +63,31 @@ input[type=text],input[type=email],input[type=password]{font-size:16px}
 .pr.m{width:auto;padding:6px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:.9rem}
 @media (max-width:600px){.pr strong{font-size:1rem}}
 .bl{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:14px}
-.rb{position:relative;display:flex;align-items:center;justify-content:center;min-height:88px;padding:18px 54px;border-radius:var(--r);background:var(--acc);color:var(--on);border:2px solid var(--acc);font-weight:600;font-size:1.15rem;text-align:center;cursor:pointer;user-select:none;transition:transform .12s}
-.rb:active{transform:scale(.98)}
-.rb .a{position:absolute;top:50%;right:6px;transform:translateY(-50%);display:flex;gap:4px}.rb .a button{padding:5px 9px;min-width:38px;background:#000b;color:#fff}
+.rb{--b:var(--acc);--c:var(--on);--a:var(--on);position:relative;display:flex;align-items:center;gap:16px;min-height:96px;padding:20px 22px;border-radius:calc(var(--r) + 6px);background:var(--b);color:var(--c);border:1px solid color-mix(in srgb,var(--c) 22%,transparent);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 10%,transparent) inset,0 12px 26px -16px #0007;overflow:hidden;cursor:pointer;user-select:none;-webkit-user-select:none;opacity:0;animation:rbIn .6s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i,0)*70ms);transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,opacity .3s}
+.rb::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--a);transition:width .45s cubic-bezier(.2,.8,.2,1),opacity .45s}
+.rb::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,color-mix(in srgb,var(--c) 18%,transparent),transparent);transform:skewX(-18deg);transition:left .8s ease;pointer-events:none}
+.rb>*{position:relative;z-index:1}
+.rb .n{font-size:.8rem;letter-spacing:.18em;opacity:.55;font-variant-numeric:tabular-nums;min-width:2ch}
+.rb .t{flex:1;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.rb .t>span{font-size:1.25rem;font-weight:600;letter-spacing:-.01em;line-height:1.15;overflow-wrap:anywhere}
+.rb .t small{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;opacity:.6}
+.rb .ar{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:50%;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);font-size:1.15rem;transition:transform .4s cubic-bezier(.2,.8,.2,1),background .3s,color .3s}
+@media (hover:hover){
+ .rb:hover{transform:translateY(-5px);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 10%,transparent) inset,0 22px 34px -18px #000a}
+ .rb:hover::before{width:100%;opacity:.1}
+ .rb:hover::after{left:120%}
+ .rb:hover .ar{transform:translateX(5px);background:var(--c);color:var(--b)}
+}
+.rb:active{transform:scale(.97);transition-duration:.12s}
+.rb.go{transform:scale(1.03);box-shadow:0 26px 40px -18px #000b;z-index:2}
+.rb.go::before{width:100%;opacity:.16}
+.rb.go .ar{transform:translateX(10px) scale(1.1);background:var(--c);color:var(--b)}
+.bl.leaving .rb:not(.go){opacity:.15!important;transform:scale(.95);transition-duration:.25s}
+.rb .a{position:absolute;top:50%;right:10px;transform:translateY(-50%);display:flex;gap:4px;z-index:3}.rb .a button{padding:5px 9px;min-width:38px;background:#000b;color:#fff}
+@keyframes rbIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes fin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#app>.logo,#app>h1,#app>.sn,#app>.grid,#app>.row,#app>.mut{animation:fin .45s ease both}
+@media (prefers-reduced-motion:reduce){.rb,#app>*{animation:none!important;opacity:1!important}.rb,.rb *{transition:none!important}}
 .sn{text-align:center;margin:-4px 0 14px;font-weight:500;opacity:.8;font-size:1.15rem}
 nav button.bk{font-size:2.1rem;line-height:1;padding:0 20px;min-width:64px;min-height:48px;background:var(--acc);color:var(--on)}
 @media (max-width:600px){.bl{grid-template-columns:1fr}}
@@ -100,8 +122,10 @@ async function load(){const[a,b]=await Promise.all([sb.from("refs").select("*").
  refs=a.data||[];photos=b.data||[];if(p>=tops().length)p=Math.max(0,tops().length-1);render()}
 function theme(r){const t=TH.find(x=>x.id===(r&&r.theme))||TH[0],s=document.documentElement.style;
  [["--bg",t.bg],["--fg",t.fg],["--acc",t.acc],["--on",t.on],["--f",t.f],["--r",t.r],["--gap",t.gap]].forEach(([k,v])=>s.setProperty(k,v))}
+function leave(e,fn){if(e.classList.contains("go"))return;e.classList.add("go");e.parentElement.classList.add("leaving");setTimeout(fn,matchMedia("(prefers-reduced-motion:reduce)").matches?0:260)}
 function push(){history.pushState({idx,p,sub},"")}
 function back(){if(history.state&&history.length>1)history.back();else{idx=true;sub=null;render();scrollTo(0,0)}}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("rb"))e.target.click()});
 addEventListener("popstate",e=>{const s=e.state||{idx:true,p:0,sub:null};idx=s.idx;p=s.p;sub=s.sub;render();scrollTo(0,0)});
 history.replaceState({idx:true,p:0,sub:null},"");
 function nav(){
@@ -110,19 +134,19 @@ function nav(){
  $("#ad").onclick=()=>admin?sb.auth.signOut():login()}
 function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
  const A=$("#app");
- if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="bl">${T.map((x,i)=>{const t=TH.find(z=>z.id===x.theme)||TH[0];return `<div class="rb" role="button" data-i="${i}" style="background:${t.bg};color:${t.fg};border-color:${t.acc};font-family:${t.f}"><span>${esc(x.name)}</span>${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:""}</div>`}).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
-  A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)}});
+ if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="bl">${T.map((x,i)=>{const t=TH.find(z=>z.id===x.theme)||TH[0],k=subsOf(x.id).length;return `<div class="rb" role="button" tabindex="0" data-i="${i}" style="--b:${t.bg};--c:${t.fg};--a:${t.acc};--i:${i};font-family:${t.f}"><span class="n">${String(i+1).padStart(2,"0")}</span><span class="t"><span>${esc(x.name)}</span>${k?`<small>${k} ${k>1?"referencias":"referencia"}</small>`:""}</span>${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:`<span class="ar">→</span>`}</div>`}).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
+  A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else leave(e,()=>{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)})});
   if(admin&&$("#nr"))$("#nr").onclick=()=>refDlg();return}
  const S=subsOf(r.id),own=phOf(r.id);if(sub&&sub!=="_own"&&!S.find(s=>s.id===sub))sub=null;
  const rs=sub&&sub!=="_own"?sub:null,show=!!sub||!S.length,sr0=rs&&S.find(x=>x.id===rs);
  list=show?(rs?phOf(rs):own):[];
  A.innerHTML=`<div class="logo"></div><h1 style="text-align:center">${esc(r.name)}</h1>`+(sr0?`<h2 class="sn">${esc(sr0.name)}</h2>`:sub==="_own"?`<h2 class="sn">General</h2>`:"")+
  (admin?`<div class="row">${show?`<button id="up">${busy||"+ Añadir fotos"}</button>`:""}<button class="g" id="ns">+ Sub-referencia</button><button class="g" id="ed">Editar</button>${rs?`<button class="g" id="ep">Precios</button><button class="d" id="ds">Eliminar sub</button>`:""}<button class="d" id="dr">Eliminar referencia</button><input id="fi" type="file" accept="image/*" multiple hidden></div>`:"")+
- (!show?`<div class="bl">${own.length?`<div class="rb" role="button" data-s="_own"><span>General</span></div>`:""}${S.map(s=>`<div class="rb" role="button" data-s="${s.id}"><span>${esc(s.name)}</span></div>`).join("")}</div>`:
+ (!show?`<div class="bl">${[...(own.length?[{id:"_own",name:"General",c:own.length}]:[]),...S.map(x=>({id:x.id,name:x.name,c:phOf(x.id).length}))].map((s,j)=>`<div class="rb" role="button" tabindex="0" data-s="${s.id}" style="--i:${j}"><span class="n">${String(j+1).padStart(2,"0")}</span><span class="t"><span>${esc(s.name)}</span><small>${s.c} ${s.c===1?"diseño":"diseños"}</small></span><span class="ar">→</span></div>`).join("")}</div>`:
   list.length?`<div class="grid">${list.map((x,i)=>`<div class="ph" data-i="${i}"><img loading="lazy" decoding="async" src="${url(x.path)}" alt="">${admin?`<div class="a t"><button data-pm="-1">◀</button><button data-pm="1">▶</button></div><div class="a bt"><button data-x="1">✕</button></div>`:`<div class="a bt"><button data-d="1">⭳</button></div>`}</div>`).join("")}</div>`:`<p class="mut">Sin fotos todavía.</p>`);
  if(sub){const sr=S.find(x=>x.id===sub);if(sr&&(admin||sr.price_detal||sr.price_dist||sr.price_mayor)){A.insertAdjacentHTML("beforeend",pmin?`<div class="pr m" id="pr">$ Precios</div>`:`<div class="pr" id="pr"><div class="h"><span>Precios · ${esc(sr.name)}</span><button id="pm">Ocultar</button></div><div class="c"><div><small>Detal</small><strong>${esc(sr.price_detal||"—")}</strong></div><div><small>Distribuidor</small><strong>${esc(sr.price_dist||"—")}</strong></div><div><small>Mayorista</small><strong>${esc(sr.price_mayor||"—")}</strong></div></div></div>`);
   $("#pr").onclick=()=>{if(pmin){pmin=false;render()}};if($("#pm"))$("#pm").onclick=e=>{e.stopPropagation();pmin=true;render()}}}
-  A.querySelectorAll(".rb[data-s]").forEach(b=>b.onclick=()=>{sub=b.dataset.s;push();render();scrollTo(0,0)});
+  A.querySelectorAll(".rb[data-s]").forEach(b=>b.onclick=()=>leave(b,()=>{sub=b.dataset.s;push();render();scrollTo(0,0)}));
  A.querySelectorAll(".ph").forEach(e=>e.onclick=ev=>{const i=+e.dataset.i,x=list[i];
   if(ev.target.closest("[data-d]"))dl(x);else if(ev.target.closest("[data-x]")){if(confirm("¿Quitar foto?"))delPh([x])}
   else if(ev.target.closest("[data-pm]"))move("photos",list,i,+ev.target.closest("[data-pm]").dataset.pm);else{li=i;$("#li").src=url(x.path);$("#lb").classList.add("on")}});

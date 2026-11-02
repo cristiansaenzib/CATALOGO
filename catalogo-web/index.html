@@ -8,7 +8,11 @@
 <style>
 :root{--bg:#f4efe6;--fg:#2b2620;--acc:#8a6b3f;--on:#fff;--f:system-ui,-apple-system,"Segoe UI",sans-serif;--r:8px;--gap:12px}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f);transition:background .3s,color .3s}
-button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:8px 15px;background:var(--acc);color:var(--on)}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 17px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 76%,var(--fg)));color:var(--on);font-weight:650;box-shadow:0 3px 10px #0002;transition:transform .18s,filter .18s}
+button:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 5px 14px #0003}button:active{transform:scale(.97)}
+button.g{background:color-mix(in srgb,var(--fg) 7%,transparent);color:inherit;border:1px solid color-mix(in srgb,var(--fg) 22%,transparent);box-shadow:none}
+button.d{background:color-mix(in srgb,#d33 8%,transparent);color:#d33;border:1px solid #d3355;box-shadow:none}
+.ph.dragging,.rb.dragging{opacity:.35;outline:2px dashed var(--acc);outline-offset:3px}.ph.drop-target,.rb.drop-target{outline:3px solid var(--acc);outline-offset:2px}
 button.g{background:transparent;color:inherit;border:1px solid #8886}button.d{background:transparent;color:#d33;border:1px solid #d3355}
 button:disabled{opacity:.35;cursor:default}
 nav{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:8px;padding:10px 16px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
@@ -111,7 +115,15 @@ const TH=[
 {id:"coral",n:"Coral",bg:"#ff6b57",fg:"#fff8f0",acc:"#fff8f0",on:"#c2321f",f:'"Trebuchet MS",sans-serif',r:"22px",gap:"12px"},
 {id:"bosque",n:"Bosque",bg:"#16302a",fg:"#eaf3ec",acc:"#9be3b0",on:"#0b1f1a",f:'"Gill Sans",sans-serif',r:"16px",gap:"14px"},
 {id:"rosa",n:"Rosa",bg:"#fde6ec",fg:"#4a1f2c",acc:"#d6336c",on:"#fff",f:'Palatino,serif',r:"28px",gap:"14px"},
-{id:"mono",n:"Mono",bg:"#fff",fg:"#000",acc:"#000",on:"#fff",f:'ui-monospace,Menlo,monospace',r:"0",gap:"6px"}];
+{id:"mono",n:"Mono",bg:"#fff",fg:"#000",acc:"#000",on:"#fff",f:'ui-monospace,Menlo,monospace',r:"0",gap:"6px"},
+{id:"lavanda",n:"Lavanda",bg:"#eee9f8",fg:"#302447",acc:"#8064b2",on:"#fff",f:'system-ui,sans-serif',r:"18px",gap:"14px"},
+{id:"azul",n:"Azul",bg:"#e7f0f8",fg:"#17324d",acc:"#286b9b",on:"#fff",f:'system-ui,sans-serif',r:"12px",gap:"14px"},
+{id:"terracota",n:"Terracota",bg:"#f3e4da",fg:"#482b23",acc:"#b65e43",on:"#fff",f:'Georgia,serif',r:"10px",gap:"16px"},
+{id:"grafito",n:"Grafito",bg:"#25272b",fg:"#f3f3f3",acc:"#a6a9ad",on:"#17191c",f:'system-ui,sans-serif',r:"8px",gap:"12px"},
+{id:"menta",n:"Menta",bg:"#e4f3ed",fg:"#183d32",acc:"#3b9879",on:"#fff",f:'system-ui,sans-serif',r:"20px",gap:"14px"},
+{id:"arena",n:"Arena",bg:"#e8dcc7",fg:"#40372b",acc:"#a17c4b",on:"#fff",f:'Palatino,serif',r:"6px",gap:"16px"},
+{id:"vino",n:"Vino",bg:"#321d2b",fg:"#f8edf2",acc:"#c27a9a",on:"#321d2b",f:'Georgia,serif',r:"14px",gap:"12px"},
+{id:"celeste",n:"Celeste",bg:"#e6f5fa",fg:"#163b4b",acc:"#3296b5",on:"#fff",f:'system-ui,sans-serif',r:"16px",gap:"12px"}];
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let refs=[],photos=[],p=0,sub=null,idx=true,admin=false,list=[],li=0,busy="",pmin=false;
 const tops=()=>refs.filter(r=>!r.parent_id),subsOf=i=>refs.filter(r=>r.parent_id===i),phOf=i=>photos.filter(x=>x.ref_id===i);
@@ -135,7 +147,8 @@ function nav(){
 function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
  const A=$("#app");
  if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="bl">${T.map((x,i)=>{const t=TH.find(z=>z.id===x.theme)||TH[0],k=subsOf(x.id).length;return `<div class="rb" role="button" tabindex="0" data-i="${i}" style="--b:${t.bg};--c:${t.fg};--a:${t.acc};--i:${i};font-family:${t.f}"><span class="n">${String(i+1).padStart(2,"0")}</span><span class="t"><span>${esc(x.name)}</span>${k?`<small>${k} ${k>1?"referencias":"referencia"}</small>`:""}</span>${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:`<span class="ar">→</span>`}</div>`}).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
-  A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else leave(e,()=>{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)})});
+  A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else if(!dragHandled)leave(e,()=>{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)})});
+  if(admin)enableDrag(A.querySelectorAll(".rb"),"refs",T);
   if(admin&&$("#nr"))$("#nr").onclick=()=>refDlg();return}
  const S=subsOf(r.id),own=phOf(r.id);if(sub&&sub!=="_own"&&!S.find(s=>s.id===sub))sub=null;
  const rs=sub&&sub!=="_own"?sub:null,show=!!sub||!S.length,sr0=rs&&S.find(x=>x.id===rs);
@@ -147,15 +160,30 @@ function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
  if(sub){const sr=S.find(x=>x.id===sub);if(sr&&(admin||sr.price_detal||sr.price_dist||sr.price_mayor)){A.insertAdjacentHTML("beforeend",pmin?`<div class="pr m" id="pr">$ Precios</div>`:`<div class="pr" id="pr"><div class="h"><span>Precios · ${esc(sr.name)}</span><button id="pm">Ocultar</button></div><div class="c"><div><small>Detal</small><strong>${esc(sr.price_detal||"—")}</strong></div><div><small>Distribuidor</small><strong>${esc(sr.price_dist||"—")}</strong></div><div><small>Mayorista</small><strong>${esc(sr.price_mayor||"—")}</strong></div></div></div>`);
   $("#pr").onclick=()=>{if(pmin){pmin=false;render()}};if($("#pm"))$("#pm").onclick=e=>{e.stopPropagation();pmin=true;render()}}}
   A.querySelectorAll(".rb[data-s]").forEach(b=>b.onclick=()=>leave(b,()=>{sub=b.dataset.s;push();render();scrollTo(0,0)}));
- A.querySelectorAll(".ph").forEach(e=>e.onclick=ev=>{const i=+e.dataset.i,x=list[i];
+ A.querySelectorAll(".ph").forEach(e=>e.onclick=ev=>{if(dragHandled){dragHandled=false;return}const i=+e.dataset.i,x=list[i];
   if(ev.target.closest("[data-d]"))dl(x);else if(ev.target.closest("[data-x]")){if(confirm("¿Quitar foto?"))delPh([x])}
   else if(ev.target.closest("[data-pm]"))move("photos",list,i,+ev.target.closest("[data-pm]").dataset.pm);else{li=i;$("#li").src=url(x.path);$("#lb").classList.add("on")}});
+ if(admin&&show)enableDrag(A.querySelectorAll(".ph"),"photos",list);
  if(admin){const fi=$("#fi");if($("#up")){$("#up").onclick=()=>fi.click();fi.onchange=()=>upload(r,[...fi.files])}
   $("#ns").onclick=()=>nameDlg("Nueva sub-referencia",async n=>{const{data}=await sb.from("refs").insert({name:n,parent_id:r.id,pos:Date.now()%1e9}).select().single();sub=data&&data.id;push();load()});
   $("#ed").onclick=()=>refDlg(r);
   $("#dr").onclick=async()=>{if(!confirm("¿Eliminar “"+r.name+"” y todas sus fotos?"))return;await delPh([...phOf(r.id),...S.flatMap(s=>phOf(s.id))],true);await sb.from("refs").delete().eq("id",r.id);idx=true;sub=null;history.replaceState({idx:true,p:0,sub:null},"");load()};
   if($("#ep"))$("#ep").onclick=()=>priceDlg(S.find(x=>x.id===sub));
   if($("#ds"))$("#ds").onclick=async()=>{if(!confirm("¿Eliminar esta sub-referencia y sus fotos?"))return;await delPh(phOf(sub),true);await sb.from("refs").delete().eq("id",sub);sub=null;load()}}}
+let dragHandled=false;
+function enableDrag(nodes,table,items){
+ const els=[...nodes];els.forEach(el=>{el.draggable=true;
+  el.addEventListener("dragstart",ev=>{dragHandled=true;el.classList.add("dragging");ev.dataTransfer.effectAllowed="move";ev.dataTransfer.setData("text/plain",el.dataset.i||"0")});
+  el.addEventListener("dragend",()=>{el.classList.remove("dragging");els.forEach(x=>x.classList.remove("drop-target"));setTimeout(()=>{dragHandled=false},100)});
+  el.addEventListener("dragover",ev=>{ev.preventDefault();ev.dataTransfer.dropEffect="move";el.classList.add("drop-target")});
+  el.addEventListener("dragleave",()=>el.classList.remove("drop-target"));
+  el.addEventListener("drop",async ev=>{ev.preventDefault();el.classList.remove("drop-target");const from=els.findIndex(x=>x.classList.contains("dragging")),to=els.indexOf(el);if(from<0||to<0||from===to)return;
+   const ordered=[...items],moved=ordered.splice(from,1)[0];ordered.splice(to,0,moved);
+   const results=await Promise.all(ordered.map((item,i)=>sb.from(table).update({pos:(i+1)*1000}).eq("id",item.id)));
+   const bad=results.find(x=>x.error);if(bad)alert("No se pudo guardar el nuevo orden: "+bad.error.message);else load();
+  });
+ });
+}
 async function move(tb,arr,i,d){const a=arr[i],b=arr[i+d];if(!b)return;
  await Promise.all([sb.from(tb).update({pos:b.pos}).eq("id",a.id),sb.from(tb).update({pos:a.pos}).eq("id",b.id)]);
  if(tb==="refs"&&p===i)p=i+d;load()}
@@ -168,8 +196,7 @@ async function upload(r,fs){const tgt=(sub&&sub!=="_own")?sub:r.id;let n=0,pos=D
  busy="";load()}
 async function dl(x){const name=(tops()[p].name||"foto").replace(/[^\w-]+/g,"-")+"-"+x.id.slice(0,6)+".jpg";
  try{const b=await(await fetch(url(x.path))).blob(),f=new File([b],name,{type:"image/jpeg"});
-  if(navigator.canShare&&navigator.canShare({files:[f]})&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){await navigator.share({files:[f]});return}
-  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
  catch(e){if(e&&e.name==="AbortError")return;window.open(url(x.path),"_blank")}}
 $("#lp").onclick=()=>sh(-1);$("#ln").onclick=()=>sh(1);$("#ld").onclick=()=>dl(list[li]);$("#lc").onclick=()=>$("#lb").classList.remove("on");
 const sh=d=>{li=(li+d+list.length)%list.length;$("#li").src=url(list[li].path)};

@@ -29,3 +29,9 @@ ADMIN, CATALOGOS APARTE Y USUARIOS CON PIN (migracion-admin.sql)
 4. El administrador ve botones Punto 1 / Punto 2 para cambiar de catalogo y edita todo. Boton "Usuarios":
    crear usuarios (usuario + PIN + punto, o administrador), cambiar PIN y eliminar.
 5. Los usuarios de punto solo ven y editan el catalogo de su punto.
+
+AHORRAR USO DE SUPABASE (miniaturas + cache)
+- La cuadricula carga miniaturas (360x640) y la foto completa solo al abrirla o descargarla.
+- Las fotos nuevas se suben con cache de 1 ano (el navegador no vuelve a descargarlas).
+- Fotos ya existentes: entra como admin y pulsa "Generar miniaturas" (una sola vez; salta las que ya tienen).
+  Mientras no tengan miniatura se muestra la foto completa.

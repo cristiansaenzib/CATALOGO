@@ -155,6 +155,19 @@ end $$;
 revoke execute on function public.crear_punto(text,text,text),public.cambiar_pin(text,text),public.actualizar_punto(text,text,text),public.eliminar_punto(text) from public,anon;
 grant execute on function public.crear_punto(text,text,text),public.cambiar_pin(text,text),public.actualizar_punto(text,text,text),public.eliminar_punto(text) to authenticated;
 
--- El usuario creado previamente en Authentication queda como administrador.
-insert into public.admins(user_id) select id from auth.users where email not like '%@catalogo.local' order by created_at asc limit 1 on conflict do nothing;
-select u.email as administrador_registrado from auth.users u join public.admins a on a.user_id=u.id;
+-- El usuario principal especificado queda como administrador.
+-- Evita asignar por error otra cuenta creada anteriormente en Supabase.
+DO $$
+DECLARE v_user_id uuid;
+BEGIN
+  SELECT id INTO v_user_id FROM auth.users
+  WHERE lower(email)=lower('saenz1098@gmail.com') LIMIT 1;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'No existe el usuario saenz1098@gmail.com en Authentication > Users.';
+  END IF;
+  INSERT INTO public.admins(user_id) VALUES(v_user_id)
+  ON CONFLICT(user_id) DO NOTHING;
+END $$;
+SELECT u.email AS administrador_registrado
+FROM auth.users u JOIN public.admins a ON a.user_id=u.id
+WHERE lower(u.email)=lower('saenz1098@gmail.com');

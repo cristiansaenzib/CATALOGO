@@ -1,7 +1,7 @@
 CATALOGO WEB IZAN - MULTIPUNTO
 
 INSTALACION (un solo SQL)
-1. En Supabase > Authentication > Users > Add user, crea el usuario administrador con tu correo y una contraseña segura. Marca Auto Confirm. Este paso es necesario porque Supabase no permite crear de forma segura la cuenta principal desde el SQL Editor.
+1. En Supabase > Authentication > Users > Add user, crea el usuario saenz1098@gmail.com con una contraseña segura. Marca Auto Confirm. Este paso es necesario porque Supabase no permite crear de forma segura la cuenta principal desde el SQL Editor.
 2. Abre SQL Editor, pega TODO el archivo instalar.sql y pulsa Run. El script crea/actualiza tablas, permisos, políticas públicas de lectura, almacenamiento y funciones para administrar puntos. Al final muestra el correo registrado como administrador.
 3. En index.html verifica SUPABASE_URL y SUPABASE_KEY (Project Settings > API). Si el proyecto de Supabase es el mismo que ya usabas, estos datos pueden permanecer.
 4. Publica index.html y logo.png en Vercel/Netlify.

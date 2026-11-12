@@ -95,10 +95,12 @@ input[type=text],input[type=email],input[type=password]{font-size:16px}
 .sn{text-align:center;margin:-4px 0 14px;font-weight:500;opacity:.8;font-size:1.15rem}
 nav button.bk{font-size:2.1rem;line-height:1;padding:0 20px;min-width:64px;min-height:48px;background:var(--acc);color:var(--on)}
 @media (max-width:600px){.bl{grid-template-columns:1fr}}
+nav{flex-wrap:wrap}nav b{min-width:0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+select{width:100%;padding:10px;margin:6px 0 10px;border:1px solid #8886;border-radius:10px;font:inherit;font-size:16px;background:#fff;color:#000}
 </style>
 </head>
 <body>
-<nav id="nv"><b></b><button class="g" onclick="login()">Admin</button></nav>
+<nav id="nv"><b></b></nav>
 <main id="app"><div class="logo"></div><p class="mut">Cargando…</p></main>
 <div id="lb"><button class="n" style="left:6px" id="lp">‹</button><button class="n" style="right:6px" id="ln">›</button><img id="li" alt=""><div><button id="ld">Descargar</button> <button id="lc">Cerrar</button></div></div>
 <dialog id="dg"></dialog>
@@ -125,11 +127,18 @@ const TH=[
 {id:"vino",n:"Vino",bg:"#321d2b",fg:"#f8edf2",acc:"#c27a9a",on:"#321d2b",f:'Georgia,serif',r:"14px",gap:"12px"},
 {id:"celeste",n:"Celeste",bg:"#e6f5fa",fg:"#163b4b",acc:"#3296b5",on:"#fff",f:'system-ui,sans-serif',r:"16px",gap:"12px"}];
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let refs=[],photos=[],p=0,sub=null,idx=true,admin=false,list=[],li=0,busy="",pmin=false;
-const tops=()=>refs.filter(r=>!r.parent_id),subsOf=i=>refs.filter(r=>r.parent_id===i),phOf=i=>photos.filter(x=>x.ref_id===i);
+let refs=[],photos=[],p=0,sub=null,idx=true,admin=false,logged=false,esAdmin=false,punto="",list=[],li=0,busy="",pmin=false;
+/* admin = "modo edición" (solo se activa con el botón Editar). logged = hay sesión. punto = punto de venta del usuario. */
+const PUNTOS=["Punto 1","Punto 2"]; /* nombres de los puntos: deben ser iguales a los de migracion-admin.sql */
+const cred=(u,pw)=>{u=u.trim().toLowerCase();return u.includes("@")?{email:u,password:pw}:{email:u+"@catalogo.local",password:pw+"#cat"}};
+const OCULTAR_VACIAS=true; /* fuera de modo edición, no mostrar referencias/sub-referencias sin fotos en este punto */
+const phOf=i=>photos.filter(x=>x.ref_id===i),rawSubs=i=>refs.filter(r=>r.parent_id===i),
+ hasPh=r=>[r,...rawSubs(r.id)].some(y=>phOf(y.id).length>0),
+ tops=()=>refs.filter(r=>!r.parent_id&&(admin||!OCULTAR_VACIAS||hasPh(r))),
+ subsOf=i=>rawSubs(i).filter(r=>admin||!OCULTAR_VACIAS||phOf(r.id).length>0);
 const url=pa=>sb.storage.from("fotos").getPublicUrl(pa).data.publicUrl;
 const covOf=r=>{const x=[r,...subsOf(r.id)].flatMap(y=>phOf(y.id))[0];return x?url(x.path):""};
-async function load(){const[a,b]=await Promise.all([sb.from("refs").select("*").order("pos"),sb.from("photos").select("*").order("pos")]);
+async function load(){const[a,b]=await Promise.all([sb.from("refs").select("*").eq("punto",punto).order("pos"),sb.from("photos").select("*").eq("punto",punto).order("pos")]);
  if(a.error){nav();$("#app").innerHTML='<div class="logo"></div><p class="mut">No se pudo conectar. Revisa SUPABASE_URL y SUPABASE_KEY.</p>';return}
  refs=a.data||[];photos=b.data||[];if(p>=tops().length)p=Math.max(0,tops().length-1);render()}
 function theme(r){const t=TH.find(x=>x.id===(r&&r.theme))||TH[0],s=document.documentElement.style;
@@ -141,11 +150,14 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.classList&&
 addEventListener("popstate",e=>{const s=e.state||{idx:true,p:0,sub:null};idx=s.idx;p=s.p;sub=s.sub;render();scrollTo(0,0)});
 history.replaceState({idx:true,p:0,sub:null},"");
 function nav(){
- $("#nv").innerHTML=`${idx?"":`<button class="bk" id="bk" aria-label="Atrás">←</button>`}<b></b><button class="g" id="ad">${admin?"Salir":"Admin"}</button>`;
+ $("#nv").innerHTML=`${idx||!logged?"":`<button class="bk" id="bk" aria-label="Atrás">←</button>`}<b>${logged?(esAdmin?PUNTOS.map(x=>`<button class="${x===punto?"":"g"}" data-pt="${esc(x)}">${esc(x)}</button>`).join(" "):esc(punto)):""}</b>${logged&&punto?`<button class="g" id="et">${admin?"Listo":"Editar"}</button>`:""}${esAdmin?`<button class="g" id="us">Usuarios</button>`:""}${logged?`<button class="g" id="ad">Salir</button>`:""}`;
  if($("#bk"))$("#bk").onclick=back;
- $("#ad").onclick=()=>admin?sb.auth.signOut():login()}
-function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
+ if($("#et"))$("#et").onclick=()=>{admin=!admin;idx=true;sub=null;p=0;pmin=false;history.replaceState({idx:true,p:0,sub:null},"");render();scrollTo(0,0)};
+ if($("#ad"))$("#ad").onclick=()=>sb.auth.signOut();if($("#us"))$("#us").onclick=usersDlg;document.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>{punto=b.dataset.pt;idx=true;sub=null;p=0;pmin=false;history.replaceState({idx:true,p:0,sub:null},"");load();scrollTo(0,0)})}
+function render(){const T=tops(),r=T[p];theme(logged&&!idx?r:null);nav();
  const A=$("#app");
+ if(!logged){loginView(A);return}
+ if(!punto){A.innerHTML=`<div class="logo"></div><p class="mut">Tu usuario todavía no tiene un punto de venta asignado.<br>Pídele al administrador que lo configure.</p>`;return}
  if(idx||!r){A.innerHTML=`<div class="logo"></div>`+(admin?`<div class="row"><button id="nr">+ Nueva referencia</button></div>`:"")+(T.length?`<div class="bl">${T.map((x,i)=>{const t=TH.find(z=>z.id===x.theme)||TH[0],k=subsOf(x.id).length;return `<div class="rb" role="button" tabindex="0" data-i="${i}" style="--b:${t.bg};--c:${t.fg};--a:${t.acc};--i:${i};font-family:${t.f}"><span class="n">${String(i+1).padStart(2,"0")}</span><span class="t"><span>${esc(x.name)}</span>${k?`<small>${k} ${k>1?"referencias":"referencia"}</small>`:""}</span>${admin?`<div class="a"><button data-m="-1">◀</button><button data-m="1">▶</button></div>`:`<span class="ar">→</span>`}</div>`}).join("")}</div>`:`<p class="mut">${admin?"Crea tu primera referencia.":"Catálogo vacío."}</p>`);
   A.querySelectorAll(".rb").forEach(e=>e.onclick=ev=>{const m=ev.target.closest("[data-m]");if(m){ev.stopPropagation();move("refs",T,+e.dataset.i,+m.dataset.m)}else if(!dragHandled)leave(e,()=>{p=+e.dataset.i;idx=false;sub=null;push();render();scrollTo(0,0)})});
   if(admin)enableDrag(A.querySelectorAll(".rb"),"refs",T);
@@ -165,9 +177,9 @@ function render(){const T=tops(),r=T[p];theme(idx?null:r);nav();
   else if(ev.target.closest("[data-pm]"))move("photos",list,i,+ev.target.closest("[data-pm]").dataset.pm);else{li=i;$("#li").src=url(x.path);$("#lb").classList.add("on")}});
  if(admin&&show)enableDrag(A.querySelectorAll(".ph"),"photos",list);
  if(admin){const fi=$("#fi");if($("#up")){$("#up").onclick=()=>fi.click();fi.onchange=()=>upload(r,[...fi.files])}
-  $("#ns").onclick=()=>nameDlg("Nueva sub-referencia",async n=>{const{data}=await sb.from("refs").insert({name:n,parent_id:r.id,pos:Date.now()%1e9}).select().single();sub=data&&data.id;push();load()});
+  $("#ns").onclick=()=>nameDlg("Nueva sub-referencia",async n=>{const{data}=await sb.from("refs").insert({name:n,parent_id:r.id,pos:Date.now()%1e9,punto}).select().single();sub=data&&data.id;push();load()});
   $("#ed").onclick=()=>refDlg(r);
-  $("#dr").onclick=async()=>{if(!confirm("¿Eliminar “"+r.name+"” y todas sus fotos?"))return;await delPh([...phOf(r.id),...S.flatMap(s=>phOf(s.id))],true);await sb.from("refs").delete().eq("id",r.id);idx=true;sub=null;history.replaceState({idx:true,p:0,sub:null},"");load()};
+  $("#dr").onclick=async()=>{if(!confirm("¿Eliminar “"+r.name+"” y TODAS sus fotos?"))return;await delPh([...phOf(r.id),...S.flatMap(s=>phOf(s.id))],true);await sb.from("refs").delete().eq("id",r.id);idx=true;sub=null;history.replaceState({idx:true,p:0,sub:null},"");load()};
   if($("#ep"))$("#ep").onclick=()=>priceDlg(S.find(x=>x.id===sub));
   if($("#ds"))$("#ds").onclick=async()=>{if(!confirm("¿Eliminar esta sub-referencia y sus fotos?"))return;await delPh(phOf(sub),true);await sb.from("refs").delete().eq("id",sub);sub=null;load()}}}
 let dragHandled=false;
@@ -192,7 +204,7 @@ function resize(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),i
 async function upload(r,fs){const tgt=(sub&&sub!=="_own")?sub:r.id;let n=0,pos=Date.now()%1e9;
  for(const f of fs){busy=`Subiendo ${++n}/${fs.length}…`;render();try{const b=await resize(f),path=`${tgt}/${Date.now()}${Math.random().toString(36).slice(2,6)}.jpg`;
   const u=await sb.storage.from("fotos").upload(path,b,{contentType:"image/jpeg"});if(u.error)throw u.error;
-  await sb.from("photos").insert({ref_id:tgt,path,pos:pos+n})}catch(e){alert("Falló una foto: "+(e.message||e))}}
+  await sb.from("photos").insert({ref_id:tgt,path,pos:pos+n,punto})}catch(e){alert("Falló una foto: "+(e.message||e))}}
  busy="";load()}
 async function dl(x){const name=(tops()[p].name||"foto").replace(/[^\w-]+/g,"-")+"-"+x.id.slice(0,6)+".jpg";
  try{const b=await(await fetch(url(x.path))).blob(),f=new File([b],name,{type:"image/jpeg"});
@@ -210,14 +222,37 @@ function refDlg(r){let th=r?r.theme:"marfil";const d=$("#dg");
  $("#c").onclick=()=>d.close();
  $("#o").onclick=async()=>{const n=$("#nm").value.trim();if(!n)return;d.close();
   if(r)await sb.from("refs").update({name:n,theme:th}).eq("id",r.id);
-  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9}).select().single();await load();p=tops().findIndex(x=>x.id===data.id);idx=false;push()}
+  else{const{data}=await sb.from("refs").insert({name:n,theme:th,pos:Date.now()%1e9,punto}).select().single();await load();p=tops().findIndex(x=>x.id===data.id);idx=false;push()}
   load()}}
 function priceDlg(r){const d=$("#dg");d.innerHTML=`<h3>Precios · ${esc(r.name)}</h3><label>Detal</label><input type="text" id="p1" value="${esc(r.price_detal||"")}" placeholder="Ej. $25.000"><label>Distribuidor</label><input type="text" id="p2" value="${esc(r.price_dist||"")}" placeholder="Ej. $20.000"><label>Mayorista</label><input type="text" id="p3" value="${esc(r.price_mayor||"")}" placeholder="Ej. $17.000"><p></p><button class="g" id="c">Cancelar</button> <button id="o">Guardar</button>`;d.showModal();$("#c").onclick=()=>d.close();
  $("#o").onclick=async()=>{const{error}=await sb.from("refs").update({price_detal:$("#p1").value.trim(),price_dist:$("#p2").value.trim(),price_mayor:$("#p3").value.trim()}).eq("id",r.id);if(error)alert("No se pudo guardar. ¿Corriste migracion-precios.sql?");d.close();load()}}
-function login(){const d=$("#dg");d.innerHTML=`<h3>Acceso admin</h3><input type="email" id="em" placeholder="Correo"><input type="password" id="pw" placeholder="Contraseña"><p id="er" style="color:#d33"></p><button class="g" id="c">Cancelar</button> <button id="o">Entrar</button>`;d.showModal();
- $("#c").onclick=()=>d.close();$("#o").onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$("#em").value,password:$("#pw").value});if(error)$("#er").textContent="Datos incorrectos";else d.close()}}
-sb.auth.onAuthStateChange((_e,s)=>{admin=!!s;if(refs.length||!admin)render()});
-sb.auth.getSession().then(({data})=>{admin=!!data.session;load()});
+async function usersDlg(){const d=$("#dg");
+ d.innerHTML=`<h3>Usuarios</h3><div id="ul" class="mut" style="padding:10px 0">Cargando…</div><b>Nuevo usuario</b><input type="text" id="nu" placeholder="Usuario (ej. maria)" autocapitalize="none" autocorrect="off"><input type="text" id="np" placeholder="PIN o contraseña (mín. 4)" autocomplete="off"><select id="nt">${PUNTOS.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}<option value="__admin">Administrador (todos los puntos)</option></select><p id="ue" style="color:#d33;min-height:1.2em;margin:4px 0"></p><button class="g" id="c">Cerrar</button> <button id="o">Crear</button>`;
+ d.showModal();$("#c").onclick=()=>d.close();
+ const err=e=>{$("#ue").textContent=e?(e.message||String(e)):""};
+ const list=async()=>{const{data,error}=await sb.rpc("listar_usuarios");const L=$("#ul");if(error){L.textContent="No se pudo cargar. ¿Corriste migracion-admin.sql?";return}
+  L.className="";L.innerHTML=(data||[]).map(u=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #8883"><span style="flex:1;overflow-wrap:anywhere"><b>${esc(u.usuario)}</b><br><small>${u.rol==="admin"?"Administrador":esc(u.punto)}</small></span><button class="g" data-pin="${u.user_id}" data-n="${esc(u.usuario)}">PIN</button><button class="d" data-del="${u.user_id}" data-n="${esc(u.usuario)}">✕</button></div>`).join("")||"Sin usuarios";
+  L.querySelectorAll("[data-pin]").forEach(b=>b.onclick=async()=>{const n=prompt("Nuevo PIN o contraseña para "+b.dataset.n+" (mín. 4):");if(!n)return;const{error}=await sb.rpc("cambiar_pin",{p_user:b.dataset.pin,p_pin:n});err(error);if(!error)alert("PIN cambiado")});
+  L.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{if(!confirm("¿Eliminar al usuario "+b.dataset.n+"? Sus fotos y referencias no se borran."))return;const{error}=await sb.rpc("eliminar_usuario",{p_user:b.dataset.del});err(error);list()})};
+ $("#o").onclick=async()=>{err();const t=$("#nt").value,{error}=await sb.rpc("crear_usuario",{p_usuario:$("#nu").value.trim().toLowerCase(),p_pin:$("#np").value,p_punto:t==="__admin"?PUNTOS[0]:t,p_rol:t==="__admin"?"admin":"punto"});
+  if(error){err(error);return}$("#nu").value="";$("#np").value="";list()};
+ list()}
+function loginView(A){
+ A.innerHTML=`<div class="logo"></div><div style="max-width:340px;margin:18px auto"><h3 style="text-align:center">Ingresar</h3><input type="text" id="em" placeholder="Usuario" autocomplete="username" autocapitalize="none" autocorrect="off"><input type="password" id="pw" placeholder="PIN o contraseña" autocomplete="current-password"><p id="er" style="color:#d33;min-height:1.2em;margin:0 0 8px"></p><button id="o" style="width:100%">Entrar</button></div>`;
+ const go=async()=>{const b=$("#o");b.disabled=true;const{error}=await sb.auth.signInWithPassword(cred($("#em").value,$("#pw").value));if(error){$("#er").textContent="Datos incorrectos";b.disabled=false}};
+ $("#o").onclick=go;[$("#em"),$("#pw")].forEach(i=>i.onkeydown=e=>{if(e.key==="Enter")go()})}
+/* Sesión + punto de venta del usuario */
+let initP=null;
+function init(){return initP||(initP=_init().finally(()=>{initP=null}))}
+async function _init(){
+ const{data}=await sb.auth.getSession();logged=!!data.session;admin=false;esAdmin=false;idx=true;sub=null;p=0;punto="";refs=[];photos=[];
+ if(!logged){render();return}
+ const pf=await sb.from("perfiles").select("punto,rol").maybeSingle();
+ esAdmin=!!(pf.data&&pf.data.rol==="admin");admin=esAdmin;punto=(pf.data&&pf.data.punto)||"";
+ if(!punto){render();return}
+ await load()}
+sb.auth.onAuthStateChange((_e,s)=>{if(!!s!==logged)setTimeout(init,0)});
+init();
 </script>
 </body>
 </html>

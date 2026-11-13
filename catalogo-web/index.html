@@ -21,7 +21,7 @@ main{max-width:1100px;margin:auto;padding:8px 16px 130px}
 h1{font-size:clamp(2rem,6vw,3.4rem);margin:14px 0 10px;letter-spacing:-.02em}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;overflow-x:auto}
 .chip.on{background:var(--fg);color:var(--bg)}.chip{white-space:nowrap}
-.grid{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.grid{display:grid;gap:min(var(--gap),10px);grid-template-columns:repeat(4,minmax(0,1fr));max-width:760px;margin:0 auto}
 .ph{position:relative;aspect-ratio:9/16;border-radius:var(--r);overflow:hidden;background:#8882;cursor:zoom-in}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .ph .a{position:absolute;display:flex;gap:4px;padding:6px}.ph .a button{padding:5px 9px;background:#000b;color:#fff}
@@ -49,13 +49,13 @@ input[type=text],input[type=email],input[type=password]{font-size:16px}
 #lb .n{position:absolute;top:50%;width:46px;height:46px;min-height:0;padding:0;font-size:1.5rem;background:#fff3;color:#fff}
 @media (max-width:600px){
  main{padding:4px 12px 60px}
- .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .grid{gap:5px}
+ .grid .ph .a{padding:3px}.grid .ph .a button{min-height:0;min-width:0;padding:2px 6px;font-size:.75rem;border-radius:8px}
  nav{gap:6px;padding-left:10px;padding-right:10px}nav button{padding:8px 12px}
  .ph .a button,.cv .a button{min-height:38px;min-width:38px}
  h1{margin:8px 0}
  dialog{width:94vw;padding:16px}
 }
-@media (min-width:601px) and (max-width:900px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (hover:none){.ph{cursor:default}}
 .pr{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:20;width:min(94vw,560px);background:color-mix(in srgb,var(--bg) 94%,transparent);color:var(--fg);border:1px solid color-mix(in srgb,var(--fg) 22%,transparent);border-radius:18px;padding:10px 14px 12px;box-shadow:0 8px 28px #0004;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .pr .h{display:flex;align-items:center;justify-content:space-between;font-size:.78rem;opacity:.75;margin-bottom:6px}
@@ -109,6 +109,9 @@ select{width:100%;padding:10px;margin:6px 0 10px;border:1px solid #8886;border-r
 /* ====== 1) PEGA AQUÍ TUS DATOS DE SUPABASE (Project Settings > API) ====== */
 const SUPABASE_URL="https://aynowdtxktuueiigkkah.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5bm93ZHR4a3R1dWVpaWdra2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0ODcyNzYsImV4cCI6MjExMDA2MzI3Nn0.tNDLv1h0bJnWsFkMPLT2IimHmw5r_F2Et9bRCk2wYIE";
+/* ====== 2) DATOS DE CLOUDFLARE (ver LEEME.txt y la carpeta cloudflare-worker) ====== */
+const CF_WORKER_URL="https://izan-fotos.TU-SUBDOMINIO.workers.dev"; /* URL del Worker que sube/borra fotos en R2 */
+const CF_PUBLIC_URL=""; /* Opcional: dominio público del bucket R2 (ej. https://fotos.tudominio.com). Vacío = las fotos se sirven por el Worker */
 /* ======================================================================== */
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const TH=[
@@ -138,7 +141,15 @@ const phOf=i=>photos.filter(x=>x.ref_id===i),rawSubs=i=>refs.filter(r=>r.parent_
  tops=()=>refs.filter(r=>!r.parent_id&&(admin||!OCULTAR_VACIAS||hasPh(r))),
  subsOf=i=>rawSubs(i).filter(r=>admin||!OCULTAR_VACIAS||phOf(r.id).length>0);
 const TQ=pa=>pa.replace(/\.jpg$/,"_t.jpg"),thumb=pa=>url(TQ(pa));
-const url=pa=>sb.storage.from("fotos").getPublicUrl(pa).data.publicUrl;
+/* Fotos nuevas: path "cf:<punto>/<ref>/<archivo>.jpg" en Cloudflare R2. Fotos antiguas (sin prefijo) siguen en Supabase. */
+const CF="cf:",isCF=pa=>pa.startsWith(CF),cfKey=pa=>pa.slice(CF.length);
+const url=pa=>isCF(pa)?(CF_PUBLIC_URL||CF_WORKER_URL+"/f").replace(/\/$/,"")+"/"+cfKey(pa):sb.storage.from("fotos").getPublicUrl(pa).data.publicUrl;
+async function cfAuth(){const{data}=await sb.auth.getSession();if(!data.session)throw new Error("La sesión expiró, vuelve a ingresar");return{Authorization:"Bearer "+data.session.access_token}}
+async function cfMsg(r){let t="";try{t=(await r.json()).error}catch(_){}return new Error("Cloudflare: "+(t||r.status))}
+async function cfPut(key,blob){const r=await fetch(CF_WORKER_URL+"/upload/"+key,{method:"PUT",headers:{...await cfAuth(),"Content-Type":"image/jpeg"},body:blob});if(!r.ok)throw await cfMsg(r)}
+async function storeRemove(paths){const cf=paths.filter(isCF).map(cfKey),su=paths.filter(x=>!isCF(x));
+ for(let i=0;i<su.length;i+=100)await sb.storage.from("fotos").remove(su.slice(i,i+100));
+ for(let i=0;i<cf.length;i+=100){const r=await fetch(CF_WORKER_URL+"/delete",{method:"POST",headers:{...await cfAuth(),"Content-Type":"application/json"},body:JSON.stringify({keys:cf.slice(i,i+100)})});if(!r.ok)console.warn(await cfMsg(r))}}
 const covOf=r=>{const x=[r,...subsOf(r.id)].flatMap(y=>phOf(y.id))[0];return x?url(x.path):""};
 async function load(){
  if(publicMode){const{data,error}=await sb.rpc("catalogo_publico",{p_slug:pointInfo&&pointInfo.slug});if(error||!data||!data.punto){nav();$("#app").innerHTML='<div class="logo"></div><p class="mut">No se pudo cargar este catálogo.</p>';return}pointInfo=data.punto;refs=data.refs||[];photos=data.photos||[]}
@@ -206,12 +217,12 @@ function enableDrag(nodes,table,items){
 async function move(tb,arr,i,d){const a=arr[i],b=arr[i+d];if(!b)return;
  await Promise.all([sb.from(tb).update({pos:b.pos}).eq("id",a.id),sb.from(tb).update({pos:a.pos}).eq("id",b.id)]);
  if(tb==="refs"&&p===i)p=i+d;load()}
-async function delPh(a,skip){await sb.storage.from("fotos").remove(a.flatMap(x=>[x.path,TQ(x.path)]));if(!skip){await sb.from("photos").delete().in("id",a.map(x=>x.id));load()}}
+async function delPh(a,skip){await storeRemove(a.flatMap(x=>[x.path,TQ(x.path)]));if(!skip){await sb.from("photos").delete().in("id",a.map(x=>x.id));load()}}
 function resize(f,W=720,H=1280,Q=.8){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d"),s=Math.max(W/im.width,H/im.height),w=im.width*s,h=im.height*s;x.fillStyle="#fff";x.fillRect(0,0,W,H);x.drawImage(im,(W-w)/2,(H-h)/2,w,h);URL.revokeObjectURL(u);c.toBlob(b=>b?ok(b):no(),"image/jpeg",Q)};im.onerror=no;im.src=u})}
 async function upload(r,fs){const tgt=(sub&&sub!=="_own")?sub:r.id;let n=0,pos=Date.now()%1e9;
- for(const f of fs){busy=`Subiendo ${++n}/${fs.length}…`;render();try{const b=await resize(f),path=`${slug(punto)}/${tgt}/${Date.now()}${Math.random().toString(36).slice(2,6)}.jpg`;
-  const u=await sb.storage.from("fotos").upload(path,b,{contentType:"image/jpeg",cacheControl:"31536000"});if(u.error)throw u.error;await sb.storage.from("fotos").upload(TQ(path),await resize(f,360,640,.72),{contentType:"image/jpeg",cacheControl:"31536000"});
-  await sb.from("photos").insert({ref_id:tgt,path,pos:pos+n,punto})}catch(e){alert("Falló una foto: "+(e.message||e))}}
+ for(const f of fs){busy=`Subiendo ${++n}/${fs.length}…`;render();try{const b=await resize(f),key=`${(pointInfo&&pointInfo.slug)||slug(punto)}/${tgt}/${Date.now()}${Math.random().toString(36).slice(2,6)}.jpg`;
+  await cfPut(key,b);await cfPut(TQ(key),await resize(f,360,640,.72));
+  const{error}=await sb.from("photos").insert({ref_id:tgt,path:CF+key,pos:pos+n,punto});if(error)throw error}catch(e){alert("Falló una foto: "+(e.message||e))}}
  busy="";load()}
 async function dl(x){const name=(tops()[p].name||"foto").replace(/[^\w-]+/g,"-")+"-"+x.id.slice(0,6)+".jpg";
  try{const b=await(await fetch(url(x.path))).blob(),f=new File([b],name,{type:"image/jpeg"});
@@ -237,7 +248,7 @@ async function genThumbs(){if(busy)return;const{data,error}=await sb.from("photo
  let n=0,ok=0,fail=0,le="";for(const x of data){busy=`Miniaturas ${++n}/${data.length}…`;if($("#gt"))$("#gt").textContent=busy;
   try{const t=TQ(x.path);if((await fetch(url(t),{method:"HEAD"})).ok)continue;
    const b=await(await fetch(url(x.path))).blob(),tb=await resize(b,360,640,.72);
-   const u=await sb.storage.from("fotos").upload(t,tb,{contentType:"image/jpeg",cacheControl:"31536000"});if(u.error)throw u.error;ok++}catch(e){fail++;le=e.message||String(e)}}
+   if(isCF(t))await cfPut(cfKey(t),tb);else{const u=await sb.storage.from("fotos").upload(t,tb,{contentType:"image/jpeg",cacheControl:"31536000"});if(u.error)throw u.error}ok++}catch(e){fail++;le=e.message||String(e)}}
  busy="";render();alert(`Listo: ${ok} miniaturas creadas, ${fail} con error`+(fail?"\n"+le:""))}
 async function puntosDlg(){const d=$("#dg");
  d.innerHTML=`<h3>Puntos de venta</h3><div id="ul" class="mut" style="padding:10px 0">Cargando…</div><hr><b>Nuevo punto</b><input type="text" id="nu" placeholder="Nombre del punto (ej. Centro)"><input type="text" id="nd" placeholder="Dirección del punto"><input type="password" id="np" placeholder="PIN (mín. 4 caracteres)" autocomplete="new-password"><p id="ue" style="color:#d33;min-height:1.2em;margin:4px 0"></p><button class="g" id="c">Cerrar</button> <button id="o">Crear punto</button>`;
@@ -252,7 +263,7 @@ async function puntosDlg(){const d=$("#dg");
   L.querySelectorAll("[data-pin]").forEach(b=>b.onclick=async()=>{const v=prompt("Nuevo PIN para "+b.dataset.pin+" (mín. 4):");if(!v)return;const{error}=await sb.rpc("cambiar_pin",{p_punto:b.dataset.pin,p_pin:v});err(error);if(!error)alert("PIN cambiado")});
   L.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{const n=b.dataset.del;if(!confirm("¿Eliminar el punto “"+n+"” con TODAS sus referencias y fotos?"))return;
    const{data:ph}=await sb.from("photos").select("path").eq("punto",n),ps=(ph||[]).flatMap(x=>[x.path,TQ(x.path)]);
-   for(let i=0;i<ps.length;i+=100)await sb.storage.from("fotos").remove(ps.slice(i,i+100));
+   await storeRemove(ps);
    const{error}=await sb.rpc("eliminar_punto",{p_punto:n});err(error);sync()})};
  $("#o").onclick=async()=>{err();const{error}=await sb.rpc("crear_punto",{p_nombre:$("#nu").value.trim(),p_pin:$("#np").value,p_direccion:$("#nd").value.trim()});if(error){err(error);return}
   $("#nu").value="";$("#nd").value="";$("#np").value="";sync()};

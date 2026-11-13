@@ -1,0 +1,14 @@
+name = "izan-fotos"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[[r2_buckets]]
+binding = "FOTOS"
+bucket_name = "izan-fotos"
+
+[vars]
+SUPABASE_URL = "https://aynowdtxktuueiigkkah.supabase.co"
+# Anon key de Supabase (es la misma clave pública que ya está en index.html)
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5bm93ZHR4a3R1dWVpaWdra2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0ODcyNzYsImV4cCI6MjExMDA2MzI3Nn0.tNDLv1h0bJnWsFkMPLT2IimHmw5r_F2Et9bRCk2wYIE"
+# Pon aquí el dominio de tu página para que solo ella pueda subir/borrar (ej. "https://izan.vercel.app")
+ALLOWED_ORIGINS = "*"

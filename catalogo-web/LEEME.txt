@@ -4,7 +4,32 @@ INSTALACION (un solo SQL)
 1. En Supabase > Authentication > Users > Add user, crea el usuario saenz1098@gmail.com con una contraseña segura. Marca Auto Confirm. Este paso es necesario porque Supabase no permite crear de forma segura la cuenta principal desde el SQL Editor.
 2. Abre SQL Editor, pega TODO el archivo instalar.sql y pulsa Run. El script crea/actualiza tablas, permisos, políticas públicas de lectura, almacenamiento y funciones para administrar puntos. Al final muestra el correo registrado como administrador.
 3. En index.html verifica SUPABASE_URL y SUPABASE_KEY (Project Settings > API). Si el proyecto de Supabase es el mismo que ya usabas, estos datos pueden permanecer.
-4. Publica index.html y logo.png en Vercel/Netlify.
+4. Configura Cloudflare para las fotos (ver abajo) y pon la URL del Worker en CF_WORKER_URL dentro de index.html.
+5. Publica index.html y logo.png en Vercel/Netlify.
+
+FOTOS EN CLOUDFLARE R2
+Las fotos nuevas que se suben desde el admin van a Cloudflare R2 (no a Supabase). Las fotos antiguas
+que ya estaban en Supabase se siguen viendo y borrando normalmente; no hace falta migrarlas.
+Supabase sigue usándose para el login, los puntos, las referencias y los precios.
+
+Opción A - Desde el panel de Cloudflare (sin instalar nada):
+ 1. Cloudflare > R2 > Create bucket. Nombre: izan-fotos.
+ 2. Workers & Pages > Create > Worker. Nombre: izan-fotos. Deploy, luego "Edit code",
+    borra todo, pega el contenido de cloudflare-worker/worker.js y Deploy.
+ 3. En el Worker > Settings > Bindings > Add > R2 bucket: Variable name FOTOS, bucket izan-fotos.
+ 4. En el Worker > Settings > Variables and Secrets agrega:
+      SUPABASE_URL     = la misma de index.html
+      SUPABASE_KEY     = la misma anon key de index.html
+      ALLOWED_ORIGINS  = el dominio de tu página (ej. https://izan.vercel.app). Usa * mientras pruebas.
+ 5. Copia la URL del Worker (https://izan-fotos.<tu-subdominio>.workers.dev) y pégala en
+    CF_WORKER_URL dentro de index.html.
+
+Opción B - Con Wrangler (terminal):
+ cd cloudflare-worker && npx wrangler r2 bucket create izan-fotos && npx wrangler deploy
+
+Opcional (recomendado con mucho tráfico): en R2 > izan-fotos > Settings > Custom Domains conecta un
+dominio (ej. fotos.tudominio.com), agrega en CORS policy AllowedOrigins ["*"] y AllowedMethods ["GET","HEAD"],
+y pon ese dominio en CF_PUBLIC_URL en index.html. Si lo dejas vacío las fotos se sirven por el Worker.
 
 USO
 - Administrador: ingresa con tu correo y contraseña. En Puntos puedes crear cada sede con nombre, dirección y PIN. También puedes editar nombre/dirección, cambiar PIN, copiar su enlace o eliminarla.
@@ -15,5 +40,5 @@ USO
 
 IMPORTANTE
 - No compartas la contraseña del administrador. El PIN de cada punto es independiente.
-- Los clientes consultan únicamente el catálogo del slug compartido mediante una función pública filtrada; las tablas no quedan expuestas para listar los demás puntos. Las fotos se sirven desde el bucket público por sus URL. La escritura sigue protegida por autenticación y RLS.
+- Los clientes consultan únicamente el catálogo del slug compartido mediante una función pública filtrada; las tablas no quedan expuestas para listar los demás puntos. Las fotos se sirven públicamente por sus URL. Para subir o borrar fotos en Cloudflare el Worker verifica la sesión de Supabase: el administrador puede en cualquier punto y cada punto solo en su propia carpeta.
 - Antes de ejecutar en producción, conserva una copia de seguridad de tu base de datos.
